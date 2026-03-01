@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @AllArgsConstructor
@@ -27,6 +29,12 @@ public class Document {
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.ORDINAL)
     private Status status;
+
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<History> histories = new ArrayList<>();
+
+    @OneToOne(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Register register;
 
     @Column(name = "created_at")
     @Temporal(TemporalType.TIMESTAMP)

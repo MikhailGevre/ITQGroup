@@ -1,3 +1,7 @@
 databaseChangeLog:
   - include:
       file: classpath:/db/changelog/changes/V001_create_table_documents.sql
+  - include:
+      file: classpath:/db/changelog/changes/V002_create_table_history.sql
+  - include:
+      file: classpath:/db/changelog/changes/V003_create_table_registers.sql
