@@ -3,7 +3,7 @@ CREATE TABLE histories
     id         BIGSERIAL PRIMARY KEY,
     author     VARCHAR(64)  NOT NULL,
     comment    VARCHAR(256) NOT NULL,
-    action     SMALLINT     NOT NULL,
+    action     VARCHAR(16)     NOT NULL,
     document_id BIGINT  NOT NULL,
     created_at TIMESTAMP    NOT NULL,
 
