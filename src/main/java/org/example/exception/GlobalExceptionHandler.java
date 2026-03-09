@@ -7,7 +7,10 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -74,4 +77,36 @@ public class GlobalExceptionHandler {
 
         return problem;
     }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "Ошибка в формате параметра запроса"
+        );
+
+        problemDetail.setTitle("Ошибка валидации параметра");
+
+        problemDetail.setProperty("timestamp", Instant.now());
+
+        if (ex.getRequiredType() == LocalDate.class) {
+            problemDetail.setDetail("Неверный формат даты");
+
+            problemDetail.setProperty("parameter", ex.getName());
+            problemDetail.setProperty("expectedFormat", "yyyy/MM/dd");
+            problemDetail.setProperty("expectedExample", "2024/03/15");
+            problemDetail.setProperty("receivedValue",
+                    ex.getValue() != null ? ex.getValue().toString() : "null");
+            problemDetail.setProperty("errorType", "invalid_date_format");
+        } else {
+            problemDetail.setProperty("parameter", ex.getName());
+            problemDetail.setProperty("requiredType",
+                    ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+            problemDetail.setProperty("receivedValue",
+                    ex.getValue() != null ? ex.getValue().toString() : "null");
+        }
+
+        return problemDetail;
+    }
 }
+
