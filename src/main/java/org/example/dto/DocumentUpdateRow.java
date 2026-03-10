@@ -1,7 +1,6 @@
 package org.example.dto;
 
-public record DocumentUpdateRow(
-        Long id,
-        String result
-) {
+public interface DocumentUpdateRow {
+    Long getId();
+    String getResult();
 }

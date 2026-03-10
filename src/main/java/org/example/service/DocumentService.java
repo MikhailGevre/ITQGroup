@@ -11,10 +11,12 @@ import org.example.exception.EntityNotFoundException;
 import org.example.mapper.DocumentMapper;
 import org.example.repository.DocumentRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.awt.print.Pageable;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -51,11 +53,7 @@ public class DocumentService {
         int page = batchDto.page();
         String sortBy = batchDto.sortBy();
         String direction = batchDto.direction();
-        Pageable pageRequest = (Pageable) PageRequest.of(
-                page,
-                size,
-                Sort.by(Sort.Direction.fromString(direction), sortBy)
-        );
+        Pageable pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(direction), sortBy));
         List<Document> documents = repository.findAllByIdsByPageable(batchDto.ids(), pageRequest);
 
         return documents.stream()
@@ -63,42 +61,48 @@ public class DocumentService {
                 .collect(Collectors.toList());
     }
 
-    public EnumMap<Result, List<Long>> sendToApprove(List<Long> documentIds) {
+    public EnumMap<Result, List<Long>> sendToApprove(Long[] documentIds) {
+
         List<DocumentUpdateRow> updateRows = repository.sendToApprove(documentIds);
 
         return updateRows.stream()
-                .collect(Collectors.groupingBy(row -> Result.valueOf(row.result()),
+                .collect(Collectors.groupingBy(row -> Result.valueOf(row.getResult()),
                         () -> new EnumMap<>(Result.class),
-                        Collectors.mapping(DocumentUpdateRow::id, Collectors.toList())
+                        Collectors.mapping(DocumentUpdateRow::getId, Collectors.toList())
                 ));
     }
 
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
-    public EnumMap<Result, List<Long>> approve(List<Long> documentIds) {
+    public EnumMap<Result, List<Long>> approve(Long[] documentIds) {
         List<DocumentUpdateRow> updateRows = repository.checkCandidates(documentIds);
         EnumMap<Result, List<Long>> candidates = updateRows.stream()
                 .collect(Collectors.groupingBy(row ->
-                                Result.valueOf(row.result()),
+                                Result.valueOf(row.getResult()),
                         () -> new EnumMap<>(Result.class),
-                        Collectors.mapping(DocumentUpdateRow::id, Collectors.toList())
+                        Collectors.mapping(DocumentUpdateRow::getId, Collectors.toList())
                 ));
-        List<Long> registersDocument = approveCandidate(candidates.get(Result.CANDIDATE));
+        if (candidates.get(Result.CANDIDATE) == null) {
+            return candidates;
+        }
+        List<Long> registersDocument = approveCandidate(candidates.get(Result.CANDIDATE).toArray(Long[]::new));
         candidates.remove(Result.CANDIDATE);
         candidates.put(Result.APPROVED, registersDocument);
 
         return candidates;
     }
 
-    public List<Long> approveCandidate(List<Long> documentIds) {
-        List<Long> approvedIds = repository.approveCandidates(documentIds);
+    public List<Long> approveCandidate(Long[] documentIds) {
+        Long[] approvedIds = repository.approveCandidates(documentIds);
 
         return registerService.registerDocument(approvedIds);
     }
 
     @Transactional
     public List<DocumentRequestDto> findDocuments(DocumentSearchDto dto) {
+        LocalDateTime createdFrom = dto.createdFrom().atStartOfDay();
+        LocalDateTime createdTo = dto.createdTo().atTime(LocalTime.MAX);
         List<Document> documents =
-                repository.getDocuments(dto.status(), dto.author(), dto.createdFrom(), dto.createdTo());
+                repository.getDocuments(dto.status(), dto.author(), createdFrom, createdTo);
 
         return documents.stream()
                 .map(mapper::toDto)
@@ -138,6 +142,5 @@ public class DocumentService {
         return repository.findById(documentId).orElseThrow(() ->
                 new EntityNotFoundException("Документ не найдет id: " + documentId));
     }
-
 }
 

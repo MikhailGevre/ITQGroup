@@ -3,13 +3,15 @@ package org.example.repository;
 import org.example.dto.DocumentUpdateRow;
 import org.example.entity.Document;
 import org.example.entity.Status;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.awt.print.Pageable;
+
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 @Repository
@@ -25,40 +27,51 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
 
     @Query(value = """
+
             WITH input_ids AS (
-                SELECT unnest(:documentIds) AS id
-            ),
-            updated AS (
-                UPDATE documents d
-                SET status = 'SUBMITTED'
-                    FROM input_ids i
-                    WHERE d.id = i.id
-                        AND d.status = 'DRAFT'
-                RETURNING d.id
-            )
-            SELECT
-                i.id,
-                CASE
-                    WHEN u.id IS NOT NULL THEN 'SUCCESS'
-                    WHEN d.id IS NULL THEN 'NOT_FOUND'
-                    ELSE 'CONFLICT'
-                END AS result
-            FROM input_ids i
-            LEFT JOIN updated u ON u.id = i.id
-            LEFT JOIN documents d ON d.id = i.id;
-            """, nativeQuery = true)
-    List<DocumentUpdateRow> sendToApprove(@Param("documentIds") List<Long> documentIds);
+              SELECT unnest(cast(:documentIds as bigint[])) AS id
+          ),
+          doc_state AS (
+              SELECT d.id, d.status
+              FROM documents d
+              JOIN input_ids i ON i.id = d.id
+          ),
+          updated AS (
+              UPDATE documents d
+              SET status = 'SUBMITTED'
+              FROM doc_state s
+              WHERE d.id = s.id
+                AND s.status = 'DRAFT'
+              RETURNING d.id
+          )
+          SELECT
+              i.id,
+              CASE
+                  WHEN u.id IS NOT NULL THEN 'SUCCESS'
+                  WHEN s.id IS NULL THEN 'NOT_FOUND'
+                  ELSE 'CONFLICT'
+              END AS result
+          FROM input_ids i
+          LEFT JOIN doc_state s ON s.id = i.id
+          LEFT JOIN updated u ON u.id = i.id;
+          """, nativeQuery = true)
+    List<DocumentUpdateRow> sendToApprove(@Param("documentIds") Long [] documentIds);
 
 
     @Query(value = """
             WITH input_ids AS (
-            SELECT unnest(:documentIds) AS id
+            SELECT unnest(cast(:documentIds as bigint[])) AS id
             ),
+            doc_state AS (
+            SELECT d.id, d.status
+            FROM documents d
+            JOIN input_ids i ON i.id = d.id
+                        ),
             updated AS (
                 UPDATE documents d
                 SET status = 'CANDIDATE'
-                    FROM input_ids i
-                    WHERE d.id = i.id
+                    FROM doc_state AS s
+                    WHERE d.id = s.id
                         AND d.status = 'SUBMITTED'
                 RETURNING d.id
             )
@@ -66,19 +79,19 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
             i.id,
             CASE
                 WHEN u.id IS NOT NULL THEN 'CANDIDATE'
-                WHEN d.id IS NULL THEN 'NOT_FOUND'
+                WHEN s.id IS NULL THEN 'NOT_FOUND'
                 ELSE 'CONFLICT'
             END AS result
             FROM input_ids i
             LEFT JOIN updated u ON u.id = i.id
-            LEFT JOIN documents d ON d.id = i.id;
+            LEFT JOIN doc_state s ON s.id = i.id;
             """, nativeQuery = true)
-    List<DocumentUpdateRow> checkCandidates(@Param("documentIds") List<Long> documentIds);
+    List<DocumentUpdateRow> checkCandidates(@Param("documentIds") Long [] documentIds);
 
 
     @Query(value = """
                 WITH input_ids AS (
-                    SELECT unnest(:documentIds) AS id
+                    SELECT unnest(cast(:documentIds as bigint[])) AS id
                 ),
                     updated AS (
                         UPDATE documents d
@@ -92,7 +105,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
                        FROM input_ids i
                 LEFT JOIN documents d ON d.id = i.id;
             """, nativeQuery = true)
-    List<Long> approveCandidates(@Param("documentIds") List<Long> documentIds);
+    Long[] approveCandidates(@Param("documentIds") Long[] documentIds);
 
 
     @Query("""
@@ -113,5 +126,5 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
             and d.status = 'SUBMITTED'
             """
     )
-    Document approveDocument(@Param("document") Document document);
+    void approveDocument(@Param("document") Document document);
 }

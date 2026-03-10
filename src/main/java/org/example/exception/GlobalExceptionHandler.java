@@ -2,18 +2,22 @@ package org.example.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -71,9 +75,8 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleGeneric(Exception ex) {
         ProblemDetail problem =
                 ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-
         problem.setTitle("Ошибка внутреннего сервера");
-        problem.setDetail("Произошла неожиданная ошибка");
+        problem.setDetail("Произошла неожиданная ошибка" + ex.getMessage());
 
         return problem;
     }
@@ -107,6 +110,31 @@ public class GlobalExceptionHandler {
         }
 
         return problemDetail;
+    }
+
+
+    @ExceptionHandler(SQLException.class)
+    public ProblemDetail handleSQLException(SQLException ex, HttpServletRequest request) {
+        log.error("SQL error [{}]: {}", ex.getSQLState(), ex.getMessage(), ex);
+
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        problem.setTitle("Ошибка сервера");
+        problem.setDetail("Произошла ошибка");
+        problem.setProperty("path", request.getRequestURI());
+
+        return problem;
+    }
+
+    @ExceptionHandler(BadSqlGrammarException.class)
+    public ProblemDetail handleBadSqlGrammar(BadSqlGrammarException ex, HttpServletRequest request) {
+        log.error("SQL syntax error: {}", ex.getMessage(), ex);
+
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        problem.setTitle("Ошибка сервера");
+        problem.setDetail("Произошла ошибка");
+        problem.setProperty("path", request.getRequestURI());
+
+        return problem;
     }
 }
 

@@ -15,7 +15,7 @@ public class RegisterService {
     private final RegisterRepository registerRepository;
 
     @Transactional
-    public List<Long> registerDocument(List<Long> documentIds) {
-        return registerRepository.registrationDocument(documentIds);
+    public List<Long> registerDocument(Long[] documentIds) {
+        return registerRepository.batchInsert(documentIds);
     }
 }

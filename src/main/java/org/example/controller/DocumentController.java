@@ -35,31 +35,31 @@ public class DocumentController {
     }
 
     @PostMapping("/batch")
-    public List<DocumentRequestDto> getBatch(@RequestBody DocumentBatchDto batchDto) {
+    public List<DocumentRequestDto> getBatch(@RequestBody @Valid DocumentBatchDto batchDto) {
         return service.getBatch(batchDto);
     }
 
     @PutMapping("/submit-for-approval")
-    public EnumMap<Result, List<Long>> sendToApprove(@RequestBody DocumentApproveDto approveDto) {
+    public EnumMap<Result, List<Long>> sendToApprove(@RequestBody @Valid DocumentApproveDto approveDto) {
         return service.sendToApprove(approveDto.documentIds());
     }
 
     @PutMapping("/approved")
-    public EnumMap<Result, List<Long>> approve(@RequestBody DocumentApproveDto approveDto) {
+    public EnumMap<Result, List<Long>> approve(@RequestBody @Valid DocumentApproveDto approveDto) {
         return service.approve(approveDto.documentIds());
     }
 
     @GetMapping
-    public List<DocumentRequestDto> getDocuments(@ModelAttribute DocumentSearchDto dto) {
+    public List<DocumentRequestDto> getDocuments(@ModelAttribute @Valid DocumentSearchDto dto) {
         return service.findDocuments(dto);
     }
 
-    @PostMapping("{documentId}/concurrency-test")
-    public void concurrencyTest(@PathVariable Long documentId,
+    @PostMapping("/{documentId}/concurrency-test")
+    public DocumentConcurrencyResultDto concurrencyTest(@PathVariable Long documentId,
                                 @RequestParam @DefaultValue(value = "5") int threads,
                                 @RequestParam @DefaultValue(value = "3")int attempts) {
 
-        service.concurrencyTest(documentId, threads, attempts);
+        return service.concurrencyTest(documentId, threads, attempts);
     }
 
 }

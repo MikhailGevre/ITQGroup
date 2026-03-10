@@ -4,16 +4,16 @@ import jakarta.validation.constraints.NotNull;
 import org.example.entity.Status;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 public record DocumentSearchDto(
         Status status,
         String author,
         @DateTimeFormat(pattern = "dd.MM.yyyy")
         @NotNull(message = "Укажите дату поиска от")
-        LocalDateTime createdFrom,
+        LocalDate createdFrom,
         @DateTimeFormat(pattern = "dd.MM.yyyy")
         @NotNull(message = "Укажите дату поиска до")
-        LocalDateTime createdTo
+        LocalDate createdTo
 ) {
 }
