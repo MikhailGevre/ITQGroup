@@ -33,6 +33,7 @@ public class DocumentService {
     private final DocumentRepository repository;
     private final DocumentMapper mapper;
     private final RegisterService registerService;
+    private final DocumentTransactionalService transactionalService;
 
     @Transactional
     public DocumentRequestDto create(DocumentDto dto) {
@@ -114,19 +115,17 @@ public class DocumentService {
         AtomicInteger successful = new AtomicInteger(0);
         AtomicInteger failed = new AtomicInteger(0);
         List<CompletableFuture<Void>> futures = new ArrayList<>();
-        Document document = getDocumentOrThrow(documentId);
 
         for (int i = 0; i < attempts; i++) {
             CompletableFuture<Void> future =
                     CompletableFuture.runAsync(() -> {
-                                repository.approveDocument(document);
-                                successful.incrementAndGet();
-                            }, executor)
-                            .exceptionally(ex -> {
-                                failed.incrementAndGet();
-                                return null;
-                            });
-
+                                try {
+                                    transactionalService.registerAndApprove(documentId);
+                                    successful.incrementAndGet();
+                                } catch (Exception e) {
+                                    failed.incrementAndGet();
+                                }
+                            }, executor);
             futures.add(future);
         }
 
@@ -134,9 +133,9 @@ public class DocumentService {
 
         executor.shutdown();
 
+        Document document = getDocumentOrThrow(documentId);
         return new DocumentConcurrencyResultDto(successful.get(), failed.get(), document.getStatus());
     }
-
 
     private Document getDocumentOrThrow(long documentId) {
         return repository.findById(documentId).orElseThrow(() ->

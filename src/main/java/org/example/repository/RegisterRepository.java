@@ -21,4 +21,11 @@ public interface RegisterRepository extends JpaRepository<Register, Long> {
         RETURNING id
         """, nativeQuery = true)
     List<Long> batchInsert(@Param("documentIds") Long[] documentIds);
+
+    @Modifying
+    @Query(value = """
+       INSERT INTO registers (document_id, approved_at)
+       VALUES (:documentId, NOW())
+       """, nativeQuery = true)
+    int approveDocument(@Param("documentId") Long documentId);
 }

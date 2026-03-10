@@ -18,4 +18,9 @@ public class RegisterService {
     public List<Long> registerDocument(Long[] documentIds) {
         return registerRepository.batchInsert(documentIds);
     }
+
+    @Transactional
+    public int approveDocument(Long documentId) {
+        return registerRepository.approveDocument(documentId);
+    }
 }

@@ -56,8 +56,8 @@ public class DocumentController {
 
     @PostMapping("/{documentId}/concurrency-test")
     public DocumentConcurrencyResultDto concurrencyTest(@PathVariable Long documentId,
-                                @RequestParam @DefaultValue(value = "5") int threads,
-                                @RequestParam @DefaultValue(value = "3")int attempts) {
+                                                        @RequestParam @DefaultValue(value = "5") int threads,
+                                                        @RequestParam @DefaultValue(value = "3") int attempts) {
 
         return service.concurrencyTest(documentId, threads, attempts);
     }
