@@ -1,7 +1,6 @@
 package org.example.service;
 
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.*;
 import org.example.entity.Document;
@@ -27,13 +26,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class DocumentService {
     private final DocumentRepository repository;
     private final DocumentMapper mapper;
     private final RegisterService registerService;
     private final DocumentTransactionalService transactionalService;
+
+    public DocumentService(DocumentRepository repository,
+                           DocumentMapper mapper,
+                           RegisterService registerService,
+                           DocumentTransactionalService transactionalService) {
+
+        this.repository = repository;
+        this.mapper = mapper;
+        this.registerService = registerService;
+        this.transactionalService = transactionalService;
+    }
 
     @Transactional
     public DocumentRequestDto create(DocumentDto dto) {
@@ -119,13 +128,13 @@ public class DocumentService {
         for (int i = 0; i < attempts; i++) {
             CompletableFuture<Void> future =
                     CompletableFuture.runAsync(() -> {
-                                try {
-                                    transactionalService.registerAndApprove(documentId);
-                                    successful.incrementAndGet();
-                                } catch (Exception e) {
-                                    failed.incrementAndGet();
-                                }
-                            }, executor);
+                        try {
+                            transactionalService.registerAndApprove(documentId);
+                            successful.incrementAndGet();
+                        } catch (Exception e) {
+                            failed.incrementAndGet();
+                        }
+                    }, executor);
             futures.add(future);
         }
 

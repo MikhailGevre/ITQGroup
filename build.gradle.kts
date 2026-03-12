@@ -17,12 +17,31 @@ java {
     }
 }
 
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2023.0.6")
+    }
+}
+
 dependencies {
+    /*
+    Spring Boot + OpenFeign
+     */
+    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+    /*
+    Resilience4j
+    */
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.0.2")
+    /*
+    Spring Retry for Feign Retryable
+    */
+    implementation("org.springframework.retry:spring-retry:2.0.3")
+    implementation("org.springframework.boot:spring-boot-starter-aop")
     /*
     Web
      */
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation ("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     /*
     JPA + Hibernate
     */
@@ -32,9 +51,10 @@ dependencies {
     MapStruct
      */
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
     /*
-    PostgreSQL
+    PostgresSQL
     */
     runtimeOnly("org.postgresql:postgresql")
 
