@@ -25,23 +25,18 @@ dependencyManagement {
 
 dependencies {
     /*
-    Spring Boot + OpenFeign
-     */
-    implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
-    /*
     Resilience4j
     */
-    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.0.2")
-    /*
-    Spring Retry for Feign Retryable
-    */
-    implementation("org.springframework.retry:spring-retry:2.0.3")
-    implementation("org.springframework.boot:spring-boot-starter-aop")
+    implementation("io.github.resilience4j:resilience4j-reactor:2.1.0")
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.1.0")
+    implementation("io.github.resilience4j:resilience4j-retry:2.1.0")
+    implementation("io.github.resilience4j:resilience4j-circuitbreaker:2.1.0")
     /*
     Web
      */
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.apache.httpcomponents.client5:httpclient5:5.2.1")
     /*
     JPA + Hibernate
     */

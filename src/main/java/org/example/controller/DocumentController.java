@@ -17,7 +17,7 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("api/v1/documents")
+@RequestMapping("${spring.url.api-documents}")
 public class DocumentController {
     private final DocumentService service;
 
@@ -37,6 +37,11 @@ public class DocumentController {
     @PostMapping("/batch")
     public List<DocumentRequestDto> getBatch(@RequestBody @Valid DocumentBatchDto batchDto) {
         return service.getBatch(batchDto);
+    }
+
+    @GetMapping("/{status}/batch-status")
+    public List<Long> getBatchByStatus(@PathVariable String status) {
+        return service.getBatchByStatus(status);
     }
 
     @PutMapping("/submit-for-approval")

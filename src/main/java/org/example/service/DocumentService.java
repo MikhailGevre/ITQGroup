@@ -9,6 +9,7 @@ import org.example.entity.Status;
 import org.example.exception.EntityNotFoundException;
 import org.example.mapper.DocumentMapper;
 import org.example.repository.DocumentRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -32,6 +33,8 @@ public class DocumentService {
     private final DocumentMapper mapper;
     private final RegisterService registerService;
     private final DocumentTransactionalService transactionalService;
+    @Value("${scheduled.batch-size}")
+    private int batchSize;
 
     public DocumentService(DocumentRepository repository,
                            DocumentMapper mapper,
@@ -69,6 +72,12 @@ public class DocumentService {
         return documents.stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    public List<Long> getBatchByStatus(String status) {
+        Status findStatus = Status.valueOf(status);
+        Pageable pageable = PageRequest.of(0, batchSize);
+        return repository.findAllByStatus(findStatus, pageable);
     }
 
     public EnumMap<Result, List<Long>> sendToApprove(Long[] documentIds) {

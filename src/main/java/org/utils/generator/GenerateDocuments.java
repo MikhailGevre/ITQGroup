@@ -1,16 +1,16 @@
 package org.utils.generator;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.DocumentDto;
-import org.example.dto.DocumentRequestDto;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.utils.client.DocumentClient;
-import org.utils.exception.FallbackException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,10 +22,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 @Component
 public class GenerateDocuments {
-    @Value("${generator.document-create}")
-    private int countDocument;
     private final DocumentClient documentClient;
     private final Executor executor;
+    @Value("${spring.url.api-documents}")
+    private String endpoint;
+    @Value("${generator.document-create}")
+    private int countDocument;
 
     public GenerateDocuments(DocumentClient documentClient,
                              @Qualifier(value = "customExecutor") Executor executor) {
@@ -40,23 +42,25 @@ public class GenerateDocuments {
     }
 
     public void generateDocuments() {
-        List<CompletableFuture<DocumentRequestDto>> futures = new ArrayList<>();
+        List<CompletableFuture<ResponseEntity<String>>> futures = new ArrayList<>();
         AtomicInteger counter = new AtomicInteger();
         for (int i = 0; i < countDocument; i++) {
-            CompletableFuture<DocumentRequestDto> future = CompletableFuture.supplyAsync(() -> {
+            int numberDocument = counter.incrementAndGet();
+            CompletableFuture<ResponseEntity<String>> future = CompletableFuture.supplyAsync(() -> {
                 DocumentDto dto =
-                        new DocumentDto("Автор № " + counter, "Название № " + counter);
-                try {
-                    counter.incrementAndGet();
-                    return documentClient.create(dto);
-                } catch (FallbackException e) {
-                    log.error("Ошибка при генерации документов, номер генерации {}, исключение: ", counter.get(), e);
+                        new DocumentDto("Автор № " + numberDocument, "Название № " + numberDocument);
+
+                int statusCode = documentClient.exchange(HttpMethod.POST, endpoint, dto).getStatusCode().value();
+
+                if (statusCode == HttpStatus.SERVICE_UNAVAILABLE.value()) {
+                    log.error("Ошибка при генерации документов, номер генерации {}", numberDocument);
+                    counter.decrementAndGet();
                     return null;
                 }
+                return documentClient.exchange(HttpMethod.POST, endpoint, dto);
             }, executor);
             futures.add(future);
         }
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
         long successCount = futures.stream()
                 .map(CompletableFuture::join)

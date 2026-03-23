@@ -18,14 +18,21 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-feign:
-  document-feign: "http://localhost:8080/api/v1/documents"
 
-retryable:
-  document-client:
-    max-attempts: "3"
-    delay: 1500
+  url:
+    base-documents-api: "http://localhost:8080"
+    api-documents: "/api/v1/documents"
+  httpclient5:
+    connection-request-timeout-second: 5
+    response-timeout-second: 10
 
+  resilience4j:
+    retry:
+      max-attempts: 3
+      wait-second: 2
+    circuit-breaker:
+      rate-threshold: 50
+      wait-second: 10
 generator:
   document-create: 10
 
@@ -38,14 +45,13 @@ executors:
   await-termination-seconds: 30
 
 scheduled:
+  batch-size: 500
   submit:
     name: "SUBMIT-worker"
     cron: ""
-    batch-size: 500
   approve:
     name: "APPROVE-worker"
     cron: ""
-    batch-size: 500
 
 
 
