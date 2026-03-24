@@ -44,14 +44,18 @@ executors:
   wait-for-task: true
   await-termination-seconds: 30
 
+controller:
+  default-value:
+    threads: 5
+    attempts: 3
 scheduled:
   batch-size: 500
   submit:
     name: "SUBMIT-worker"
-    cron: ""
+    cron: "*/30 * * * * *"
   approve:
     name: "APPROVE-worker"
-    cron: ""
+    cron: "*/30 * * * * *"
 
 
 

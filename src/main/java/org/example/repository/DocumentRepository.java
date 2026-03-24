@@ -130,5 +130,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     )
     int approveDocument(@Param("documentId") Long documentId);
 
-    List<Long> findAllByStatus(Status status, Pageable pageable);
+    @Query("""
+        select d.id from Document d
+        where d.status =:status
+        """)
+    List<Long> findAllByStatus(@Param("status") Status status, Pageable pageable);
 }

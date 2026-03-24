@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class DocumentService {
+    private static final int DEFAULT_PAGE = 0;
     private final DocumentRepository repository;
     private final DocumentMapper mapper;
     private final RegisterService registerService;
@@ -76,11 +77,11 @@ public class DocumentService {
 
     public List<Long> getBatchByStatus(String status) {
         Status findStatus = Status.valueOf(status);
-        Pageable pageable = PageRequest.of(0, batchSize);
+        Pageable pageable = PageRequest.of(DEFAULT_PAGE, batchSize, Sort.by(Sort.Direction.ASC, "id"));
         return repository.findAllByStatus(findStatus, pageable);
     }
 
-    public EnumMap<Result, List<Long>> sendToApprove(Long[] documentIds) {
+    public EnumMap<Result, List<Long>> submit(Long[] documentIds) {
 
         List<DocumentUpdateRow> updateRows = repository.sendToApprove(documentIds);
 

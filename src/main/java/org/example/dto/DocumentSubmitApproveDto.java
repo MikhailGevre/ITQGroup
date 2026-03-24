@@ -1,6 +1,6 @@
 package org.example.dto;
 
-public record DocumentApproveDto(
+public record DocumentSubmitApproveDto(
         Long[] documentIds
 ) {
 }
