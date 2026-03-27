@@ -50,14 +50,15 @@ public class GenerateDocuments {
                 DocumentDto dto =
                         new DocumentDto("Автор № " + numberDocument, "Название № " + numberDocument);
 
-                int statusCode = documentClient.exchange(HttpMethod.POST, endpoint, dto).getStatusCode().value();
+                ResponseEntity<String> response = documentClient.exchange(HttpMethod.POST, endpoint, dto);
 
-                if (statusCode == HttpStatus.SERVICE_UNAVAILABLE.value()) {
+                if (response.getStatusCode().value() == HttpStatus.SERVICE_UNAVAILABLE.value()) {
                     log.error("Ошибка при генерации документов, номер генерации {}", numberDocument);
                     counter.decrementAndGet();
                     return null;
                 }
-                return documentClient.exchange(HttpMethod.POST, endpoint, dto);
+                log.info("Успешная генерация документа {}", dto);
+                return response;
             }, executor);
             futures.add(future);
         }

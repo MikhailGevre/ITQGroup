@@ -77,8 +77,10 @@ public class SchedulerService {
         }
 
         Long[] documentsIds;
+
         try {
             documentsIds = objectMapper.readValue(raw.getBody(), Long[].class);
+            log.info("Успешное получение пачки документов - {}, по ендпоинту {}", documentsIds.length, endpointGet);
         } catch (JsonProcessingException e) {
             log.error("Произошла ошибка парсинга Json {}", raw.getBody());
             throw new JsonParseException(e.getMessage());

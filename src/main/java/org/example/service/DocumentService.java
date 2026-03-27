@@ -7,6 +7,7 @@ import org.example.entity.Document;
 import org.example.entity.Result;
 import org.example.entity.Status;
 import org.example.exception.EntityNotFoundException;
+import org.example.exception.RegisterDocumentException;
 import org.example.mapper.DocumentMapper;
 import org.example.repository.DocumentRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,11 +79,11 @@ public class DocumentService {
     public List<Long> getBatchByStatus(String status) {
         Status findStatus = Status.valueOf(status);
         Pageable pageable = PageRequest.of(DEFAULT_PAGE, batchSize, Sort.by(Sort.Direction.ASC, "id"));
+
         return repository.findAllByStatus(findStatus, pageable);
     }
 
     public EnumMap<Result, List<Long>> submit(Long[] documentIds) {
-
         List<DocumentUpdateRow> updateRows = repository.sendToApprove(documentIds);
 
         return updateRows.stream()
@@ -114,7 +115,7 @@ public class DocumentService {
     public List<Long> approveCandidate(Long[] documentIds) {
         Long[] approvedIds = repository.approveCandidates(documentIds);
 
-        return registerService.registerDocument(approvedIds);
+        return registerService.registerDocumentBatch(approvedIds);
     }
 
     @Transactional
@@ -141,7 +142,7 @@ public class DocumentService {
                         try {
                             transactionalService.registerAndApprove(documentId);
                             successful.incrementAndGet();
-                        } catch (Exception e) {
+                        } catch (RegisterDocumentException e) {
                             failed.incrementAndGet();
                         }
                     }, executor);

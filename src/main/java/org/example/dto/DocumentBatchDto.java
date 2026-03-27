@@ -3,9 +3,11 @@ package org.example.dto;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
+import lombok.Builder;
 
 import java.util.List;
 
+@Builder
 public record DocumentBatchDto(
         @NotEmpty
         List<Long> ids,

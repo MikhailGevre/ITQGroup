@@ -5,42 +5,57 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.utils.exception.JsonParseException;
+import org.utils.exception.ServiceRequestError;
 
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
-    public ProblemDetail handleDocumentNotFound(EntityNotFoundException ex, HttpServletRequest request) {
-        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+    public ResponseEntity<ProblemDetail> handleNotFound(
+            EntityNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} Entity not found: {}", errorId, ex.getMessage(), ex);
 
-        problem.setTitle("Документ не найден");
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setTitle("Ресурс не найден");
         problem.setDetail(ex.getMessage());
         problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
 
-        return problem;
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex
+    public ResponseEntity<ProblemDetail> handleValidation(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request
     ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} Validation failed", errorId, ex);
+
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         problem.setTitle("Ошибка валидации");
+        problem.setDetail("Некорректные данные запроса");
 
         Map<String, String> errors = new HashMap<>();
-
         ex.getBindingResult()
                 .getFieldErrors()
                 .forEach(error ->
@@ -48,93 +63,185 @@ public class GlobalExceptionHandler {
                 );
 
         problem.setProperty("errors", errors);
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
 
-        return problem;
+        return ResponseEntity.badRequest().body(problem);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ProblemDetail handleConstraintViolation(
-            ConstraintViolationException ex
+    public ResponseEntity<ProblemDetail> handleConstraintViolation(
+            ConstraintViolationException ex,
+            HttpServletRequest request
     ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} Constraint violation", errorId, ex);
+
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         problem.setTitle("Ошибка валидации");
+        problem.setDetail("Некорректные параметры запроса");
 
         Map<String, String> errors = new HashMap<>();
 
-        ex.getConstraintViolations().forEach(violation -> {
-            String field = violation.getPropertyPath().toString();
-            errors.put(field, violation.getMessage());
+        ex.getConstraintViolations().forEach(v -> {
+            String field = v.getPropertyPath().toString();
+            errors.put(field, v.getMessage());
         });
 
         problem.setProperty("errors", errors);
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
 
-        return problem;
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneric(Exception ex) {
-        ProblemDetail problem =
-                ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-        problem.setTitle("Ошибка внутреннего сервера");
-        problem.setDetail("Произошла неожиданная ошибка" + ex.getMessage());
-
-        return problem;
+        return ResponseEntity.badRequest().body(problem);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ProblemDetail handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST,
-                "Ошибка в формате параметра запроса"
-        );
+    public ResponseEntity<ProblemDetail> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} Type mismatch", errorId, ex);
 
-        problemDetail.setTitle("Ошибка валидации параметра");
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Ошибка параметра запроса");
+        problem.setDetail("Некорректный формат параметра");
 
-        problemDetail.setProperty("timestamp", Instant.now());
+        problem.setProperty("parameter", ex.getName());
+        problem.setProperty("receivedValue",
+                ex.getValue() != null ? ex.getValue().toString() : "null");
 
-        if (ex.getRequiredType() == LocalDate.class) {
-            problemDetail.setDetail("Неверный формат даты");
-
-            problemDetail.setProperty("parameter", ex.getName());
-            problemDetail.setProperty("expectedFormat", "yyyy/MM/dd");
-            problemDetail.setProperty("expectedExample", "2024/03/15");
-            problemDetail.setProperty("receivedValue",
-                    ex.getValue() != null ? ex.getValue().toString() : "null");
-            problemDetail.setProperty("errorType", "invalid_date_format");
-        } else {
-            problemDetail.setProperty("parameter", ex.getName());
-            problemDetail.setProperty("requiredType",
-                    ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
-            problemDetail.setProperty("receivedValue",
-                    ex.getValue() != null ? ex.getValue().toString() : "null");
+        if (ex.getRequiredType() != null) {
+            problem.setProperty("requiredType", ex.getRequiredType().getSimpleName());
         }
 
-        return problemDetail;
+        if (ex.getRequiredType() == LocalDate.class) {
+            problem.setProperty("expectedFormat", "yyyy/MM/dd");
+            problem.setProperty("example", "2024/03/15");
+        }
+
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.badRequest().body(problem);
     }
 
-
     @ExceptionHandler(SQLException.class)
-    public ProblemDetail handleSQLException(SQLException ex, HttpServletRequest request) {
-        log.error("SQL error [{}]: {}", ex.getSQLState(), ex.getMessage(), ex);
+    public ResponseEntity<ProblemDetail> handleSql(
+            SQLException ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} SQL error [{}]: {}", errorId, ex.getSQLState(), ex.getMessage(), ex);
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         problem.setTitle("Ошибка сервера");
-        problem.setDetail("Произошла ошибка");
-        problem.setProperty("path", request.getRequestURI());
+        problem.setDetail("Произошла ошибка при работе с базой данных");
 
-        return problem;
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
 
     @ExceptionHandler(BadSqlGrammarException.class)
-    public ProblemDetail handleBadSqlGrammar(BadSqlGrammarException ex, HttpServletRequest request) {
-        log.error("SQL syntax error: {}", ex.getMessage(), ex);
+    public ResponseEntity<ProblemDetail> handleBadSql(
+            BadSqlGrammarException ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} SQL syntax error", errorId, ex);
 
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         problem.setTitle("Ошибка сервера");
-        problem.setDetail("Произошла ошибка");
-        problem.setProperty("path", request.getRequestURI());
+        problem.setDetail("Произошла ошибка при работе с базой данных");
 
-        return problem;
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ProblemDetail> handleGeneric(
+            Exception ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} Unexpected error", errorId, ex);
+
+        ProblemDetail problem =
+                ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        problem.setTitle("Ошибка внутреннего сервера");
+        problem.setDetail("Произошла неожиданная ошибка");
+
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
+    }
+
+    @ExceptionHandler(RegisterDocumentException.class)
+    public ResponseEntity<ProblemDetail> handleRegisterDocument(
+            RegisterDocumentException ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} Register document error: {}", errorId, ex.getMessage(), ex);
+
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Ошибка регистрации документа");
+        problem.setDetail(ex.getMessage());
+
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.badRequest().body(problem);
+    }
+
+    @ExceptionHandler(JsonParseException.class)
+    public ResponseEntity<ProblemDetail> handleJsonParse(
+            JsonParseException ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} JSON parse error: {}", errorId, ex.getMessage(), ex);
+
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Ошибка обработки JSON");
+        problem.setDetail("Некорректный формат данных");
+
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.badRequest().body(problem);
+    }
+
+    @ExceptionHandler(ServiceRequestError.class)
+    public ResponseEntity<ProblemDetail> handleServiceRequestError(
+            ServiceRequestError ex,
+            HttpServletRequest request
+    ) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("ErrorId={} External service error: {}", errorId, ex.getMessage(), ex);
+
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.SERVICE_UNAVAILABLE);
+        problem.setTitle("Ошибка внешнего сервиса");
+        problem.setDetail(ex.getMessage());
+
+        problem.setProperty("path", request.getRequestURI());
+        problem.setProperty("errorId", errorId);
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(problem);
     }
 }
 

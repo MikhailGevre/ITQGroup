@@ -65,9 +65,23 @@ dependencies {
     /*
     Test
      */
+    testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.11.0")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+
+     /*
+     Testcontainers
+     */
+    testImplementation ("org.junit.jupiter:junit-jupiter:5.8.1")
+    testImplementation ("org.testcontainers:testcontainers:2.0.4")
+    testImplementation ("org.testcontainers:testcontainers-junit-jupiter:2.0.4")
+    testImplementation("org.testcontainers:testcontainers-postgresql:2.0.4")
+    testImplementation("org.postgresql:postgresql:42.7.3")
+
+
+
 }
 
 tasks.test {

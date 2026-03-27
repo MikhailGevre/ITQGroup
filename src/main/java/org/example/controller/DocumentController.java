@@ -7,12 +7,12 @@ import org.example.dto.*;
 import org.example.entity.Result;
 import org.example.service.DocumentService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 @RestController
@@ -65,16 +65,13 @@ public class DocumentController {
 
     @PostMapping("/{documentId}/concurrency-test")
     public DocumentConcurrencyResultDto concurrencyTest(@PathVariable Long documentId,
-                                                        @RequestParam
-                                                            @DefaultValue(
-                                                                value = "${controller.default-value.threads}"
-                                                            ) int threads,
-                                                        @RequestParam
-                                                            @DefaultValue(
-                                                                    value = "${controller.default-value.attempts}"
-                                                            ) int attempts) {
+                                                        @RequestParam(required = false) Integer threads,
+                                                        @RequestParam(required = false) Integer attempts) {
 
-        return service.concurrencyTest(documentId, threads, attempts);
+        int t = Optional.ofNullable(threads).orElse(defaultThreads);
+        int a = Optional.ofNullable(attempts).orElse(defaultAttempts);
+
+        return service.concurrencyTest(documentId, t, a);
     }
 
 }
